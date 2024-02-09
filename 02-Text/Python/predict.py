@@ -38,10 +38,12 @@ import tensorflow as tf
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential, Model, model_from_json
-from keras.layers.normalization import BatchNormalization
-from keras.layers.embeddings import Embedding
+from tensorflow.keras.layers import BatchNormalization
+
+from keras.layers import Embedding
 from keras.layers import Dense, LSTM, SpatialDropout1D, Activation, Conv1D, MaxPooling1D, Input, concatenate
-from keras.utils.np_utils import to_categorical
+from tensorflow.keras.utils import to_categorical
+
 
 class predict:
 
@@ -51,19 +53,19 @@ class predict:
         self.embed_dim = 300
         self.NLTKPreprocessor = self.NLTKPreprocessor()
 
-
     class NLTKPreprocessor(BaseEstimator, TransformerMixin):
         """
         Transforms input data by using NLTK tokenization, POS tagging, lemmatization and vectorization.
         """
 
-        def __init__(self, max_sentence_len = 300, stopwords=None, punct=None, lower=True, strip=True):
+        def __init__(self, max_sentence_len=300, stopwords=None, punct=None, lower=True, strip=True):
             """
             Instantiates the preprocessor.
             """
             self.lower = lower
             self.strip = strip
-            self.stopwords = set(stopwords) if stopwords else set(sw.words('english'))
+            self.stopwords = set(stopwords) if stopwords else set(
+                sw.words('english'))
             self.punct = set(punct) if punct else set(string.punctuation)
             self.lemmatizer = WordNetLemmatizer()
             self.max_sentence_len = max_sentence_len
@@ -133,7 +135,6 @@ class predict:
             tokenized_document = self.vectorize(np.array(doc)[np.newaxis])
             return tokenized_document
 
-
         def vectorize(self, doc):
             """
             Returns a vectorized padded version of sequences.
@@ -142,7 +143,8 @@ class predict:
             with open(save_path, 'rb') as f:
                 tokenizer = pickle.load(f)
             doc_pad = tokenizer.texts_to_sequences(doc)
-            doc_pad = pad_sequences(doc_pad, padding='pre', truncating='pre', maxlen=self.max_sentence_len)
+            doc_pad = pad_sequences(
+                doc_pad, padding='pre', truncating='pre', maxlen=self.max_sentence_len)
             return np.squeeze(doc_pad)
 
         def lemmatize(self, token, tag):
@@ -159,11 +161,11 @@ class predict:
 
             return self.lemmatizer.lemmatize(token, tag)
 
-
     class MyRNNTransformer(BaseEstimator, TransformerMixin):
         """
         Transformer allowing our Keras model to be included in our pipeline
         """
+
         def __init__(self, classifier):
             self.classifier = classifier
 
@@ -172,14 +174,15 @@ class predict:
             num_epochs = 35
             batch_size = batch_size
             epochs = num_epochs
-            self.classifier.fit(X, y, epochs=epochs, batch_size=batch_size, verbose=2)
+            self.classifier.fit(X, y, epochs=epochs,
+                                batch_size=batch_size, verbose=2)
             return self
 
         def transform(self, X):
             self.pred = self.classifier.predict(X)
-            self.classes = [[0 if el < 0.2 else 1 for el in item] for item in self.pred]
+            self.classes = [[0 if el < 0.2 else 1 for el in item]
+                            for item in self.pred]
             return self.pred
-
 
     def run(self, X, model_name):
         """
@@ -190,20 +193,19 @@ class predict:
             Inner build function that builds a pipeline including a preprocessor and a classifier.
             """
             model = Pipeline([
-                    ('preprocessor', self.NLTKPreprocessor),
-                    ('classifier', classifier)
-                ])
+                ('preprocessor', self.NLTKPreprocessor),
+                ('classifier', classifier)
+            ])
             return model
 
         save_path = '/Users/raphaellederman/Desktop/Fil_Rouge/Text/Models/'
         json_file = open(save_path + model_name + '.json', 'r')
         classifier = model_from_json(json_file.read())
         classifier.load_weights(save_path + model_name + '.h5')
-        classifier.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+        classifier.compile(loss='categorical_crossentropy',
+                           optimizer='adam', metrics=['accuracy'])
         json_file.close()
         model = build(self.MyRNNTransformer(classifier))
         y_pred = model.transform([X])
 
         return y_pred
-
-

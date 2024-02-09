@@ -39,10 +39,12 @@ import tensorflow as tf
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential, Model, model_from_json
-from keras.layers.normalization import BatchNormalization
-from keras.layers.embeddings import Embedding
+from tensorflow.keras.layers import BatchNormalization
+
+from keras.layers import Embedding
 from keras.layers import Dense, LSTM, SpatialDropout1D, Activation, Conv1D, MaxPooling1D, Input, concatenate
-from keras.utils.np_utils import to_categorical
+from tensorflow.keras.utils import to_categorical
+
 
 class train_svm:
 
@@ -51,21 +53,21 @@ class train_svm:
         self.max_features = 300
         self.embed_dim = 300
         self.NLTKPreprocessor = self.NLTKPreprocessor(corpus)
-        #self.MyRNNTransformer = self.MyRNNTransformer()
-
+        # self.MyRNNTransformer = self.MyRNNTransformer()
 
     class NLTKPreprocessor(BaseEstimator, TransformerMixin):
         """
         Transforms input data by using NLTK tokenization, POS tagging, lemmatization and vectorization.
         """
 
-        def __init__(self, corpus, max_sentence_len = 300, stopwords=None, punct=None, lower=True, strip=True):
+        def __init__(self, corpus, max_sentence_len=300, stopwords=None, punct=None, lower=True, strip=True):
             """
             Instantiates the preprocessor.
             """
             self.lower = lower
             self.strip = strip
-            self.stopwords = set(stopwords) if stopwords else set(sw.words('english'))
+            self.stopwords = set(stopwords) if stopwords else set(
+                sw.words('english'))
             self.punct = set(punct) if punct else set(string.punctuation)
             self.lemmatizer = WordNetLemmatizer()
             self.corpus = corpus
@@ -136,7 +138,6 @@ class train_svm:
             tokenized_document = self.vectorize(np.array(doc)[np.newaxis])
             return tokenized_document
 
-
         def vectorize(self, doc):
             """
             Returns a vectorized padded version of sequences.
@@ -145,7 +146,8 @@ class train_svm:
             with open(save_path, 'rb') as f:
                 tokenizer = pickle.load(f)
             doc_pad = tokenizer.texts_to_sequences(doc)
-            doc_pad = pad_sequences(doc_pad, padding='pre', truncating='pre', maxlen=self.max_sentence_len)
+            doc_pad = pad_sequences(
+                doc_pad, padding='pre', truncating='pre', maxlen=self.max_sentence_len)
             return np.squeeze(doc_pad)
 
         def lemmatize(self, token, tag):
@@ -162,11 +164,11 @@ class train_svm:
 
             return self.lemmatizer.lemmatize(token, tag)
 
-
     class MyRNNTransformer(BaseEstimator, TransformerMixin):
         """
         Transformer allowing our Keras model to be included in our pipeline
         """
+
         def __init__(self, classifier):
             self.classifier = classifier
 
@@ -175,14 +177,15 @@ class train_svm:
             num_epochs = 35
             batch_size = batch_size
             epochs = num_epochs
-            self.classifier.fit(X, y, epochs=epochs, batch_size=batch_size, verbose=2)
+            self.classifier.fit(X, y, epochs=epochs,
+                                batch_size=batch_size, verbose=2)
             return self
 
         def transform(self, X):
             self.pred = self.classifier.predict_proba(X)
-            self.classes = [[0 if el < 0.2 else 1 for el in item] for item in self.pred]
+            self.classes = [[0 if el < 0.2 else 1 for el in item]
+                            for item in self.pred]
             return self.classes
-
 
     class TfidfEmbeddingVectorizer(object):
         def __init__(self, word2vec):
@@ -211,17 +214,14 @@ class train_svm:
                 for words in X
             ])
 
-
     def identity(self, arg):
         """
         Simple identity function works as a passthrough.
         """
         return arg
 
-
     def reshape_a_feature_column(self, series):
         return np.reshape(np.asarray(series), (len(series), 1))
-
 
     def pipelinize_feature(self, function, active=True):
         def list_comprehend_a_function(list_or_series, active=True):
@@ -231,7 +231,6 @@ class train_svm:
                 return processed
             else:
                 return self.reshape_a_feature_column(np.zeros(len(list_or_series)))
-
 
     def get_text_length(self, text):
         return len(text)
@@ -243,7 +242,6 @@ class train_svm:
             'Data/GoogleNews-vectors.bin.gz',
             binary=True)
 
-
     def lemmatize_token(self, token, tag):
         tag = {
             'N': wn.NOUN,
@@ -252,7 +250,6 @@ class train_svm:
             'J': wn.ADJ
         }.get(tag[0], wn.NOUN)
         return WordNetLemmatizer().lemmatize(token, tag)
-
 
     def get_preprocessed_corpus(self, X_corpus):
         """
@@ -284,7 +281,6 @@ class train_svm:
         doc = ' '.join(lemmatized_tokens)
         return doc
 
-
     def prepare_embedding(self, X):
         """
         Returns the embedding weights matrix, the word index, and the word-vector dictionnary corresponding
@@ -300,23 +296,24 @@ class train_svm:
         X_pad = tokenizer.texts_to_sequences(pd.Series(X_pad))
 
         # Pad the sequences
-        X_pad = pad_sequences(X_pad, maxlen=self.max_sentence_len, padding='post', truncating='post')
+        X_pad = pad_sequences(
+            X_pad, maxlen=self.max_sentence_len, padding='post', truncating='post')
 
         # Retrieve the word index
         train_word_index = tokenizer.word_index
 
         # Construct the embedding weights matrix and word-vector dictionnary
-        train_embedding_weights = np.zeros((len(train_word_index) + 1, self.embed_dim))
+        train_embedding_weights = np.zeros(
+            (len(train_word_index) + 1, self.embed_dim))
         for word, index in train_word_index.items():
-            train_embedding_weights[index, :] = word2vec[word] if word in word2vec else np.random.rand(self.embed_dim)
+            train_embedding_weights[index, :] = word2vec[word] if word in word2vec else np.random.rand(
+                self.embed_dim)
         word_vector_dict = dict(zip(pd.Series(list(train_word_index.keys())),
                                     pd.Series(list(train_word_index.keys())).apply(
                                         lambda x: train_embedding_weights[train_word_index[x]])))
         return train_embedding_weights, train_word_index, word_vector_dict
 
-
-
-    def multiclass_accuracy(self,predictions, target):
+    def multiclass_accuracy(self, predictions, target):
         "Returns the multiclass accuracy of the classifier's predictions"
         score = []
         for j in range(0, 5):
@@ -327,9 +324,8 @@ class train_svm:
             score.append(count / len(predictions))
         return score
 
-
-    def run(self,X, y, classifier=SGDClassifier, model_name=None,
-                           verbose=True):
+    def run(self, X, y, classifier=SGDClassifier, model_name=None,
+            verbose=True):
         """
         Builds a classifer for the given list of documents and targets
         """
@@ -348,12 +344,14 @@ class train_svm:
         y_trans = y
 
         # Prepare the embedding
-        train_embedding_weights, train_word_index, wv_dict = self.prepare_embedding(X)
+        train_embedding_weights, train_word_index, wv_dict = self.prepare_embedding(
+            X)
 
         # Begin evaluation
-        if verbose: print("Building complete model and saving ...")
+        if verbose:
+            print("Building complete model and saving ...")
         model = build(classifier, X, y_trans, wv_dict, corpus=X)
-        
+
         # Save the model
         if model_name:
             outpath = 'Models/'

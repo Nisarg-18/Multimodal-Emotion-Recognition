@@ -44,10 +44,12 @@ import tensorflow as tf
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential, Model, model_from_json
-from keras.layers.normalization import BatchNormalization
-from keras.layers.embeddings import Embedding
+from tensorflow.keras.layers import BatchNormalization
+
+from keras.layers import Embedding
 from keras.layers import Dense, LSTM, SpatialDropout1D, Activation, Conv1D, MaxPooling1D, Input, concatenate
-from keras.utils.np_utils import to_categorical
+from tensorflow.keras.utils import to_categorical
+
 
 class visualize:
 
@@ -82,7 +84,7 @@ class visualize:
     def most_frequent_words_preprocessed(self):
         # Visualization of the most frequent words
         if not hasattr(self, 'X_preprocess'):
-            preprocessor = train(corpus = self.X).NLTKPreprocessor
+            preprocessor = train(corpus=self.X).NLTKPreprocessor
             self.X_preprocess = prep.transform(self.X).tolist()
         complete_corpus = ' '.join(self.X_preprocess)
         words = tokenize.word_tokenize(complete_corpus)
@@ -95,36 +97,41 @@ class visualize:
         # Retrieve some info on the text data
         numWords = []
         for text in self.X:
-                counter = len(text.split())
-                numWords.append(counter)  
+            counter = len(text.split())
+            numWords.append(counter)
         numFiles = len(numWords)
         print('The total number of essays is', numFiles)
         print('The total number of words in all essays is', sum(numWords))
-        print('The average number of words in each essay is', sum(numWords)/len(numWords))
+        print('The average number of words in each essay is',
+              sum(numWords)/len(numWords))
 
     def get_preprocessed_corpus_statistics(self):
         # Retrieve some info on the preprocessed text data
         if not hasattr(self, 'X_preprocess'):
-            preprocessor = train(corpus = self.X).NLTKPreprocessor
+            preprocessor = train(corpus=self.X).NLTKPreprocessor
             self.X_preprocess = prep.transform(self.X).tolist()
-        len_list = [np.count_nonzero(self.X_preprocess[i]) for i in range(len(self.X))]
-        print('The average number of words in each preprocessed essay is', np.mean(len_list))
+        len_list = [np.count_nonzero(self.X_preprocess[i])
+                    for i in range(len(self.X))]
+        print('The average number of words in each preprocessed essay is',
+              np.mean(len_list))
         print('The standard deviation of the number of words in each preprocessed essay is', np.std(len_list))
-        print('The average number of words in each preprocessed essay plus 2 standard deviations is', np.mean(len_list) + 2 * np.std(len_list))
+        print('The average number of words in each preprocessed essay plus 2 standard deviations is', np.mean(
+            len_list) + 2 * np.std(len_list))
+
 
 class tsne:
-    
-    def __init__(self, X, max_features = 30000, max_sentence_len = 300, embed_dim = 300,  n_elements = 100):
+
+    def __init__(self, X, max_features=30000, max_sentence_len=300, embed_dim=300,  n_elements=100):
         self.X = X
-        self.max_features =max_features
+        self.max_features = max_features
         self.max_sentence_len = max_sentence_len
         self.embed_dim = embed_dim
         self.n_elements = n_elements
-        self.vectors, self.words, self.dic =  self.prepare_embedding(self.X)
+        self.vectors, self.words, self.dic = self.prepare_embedding(self.X)
 
     def load_google_vec(self):
         url = 'https://s3.amazonaws.com/dl4j-distribution/GoogleNews-vectors-negative300.bin.gz'
-        #wget.download(url, 'Data/GoogleNews-vectors.bin.gz')
+        # wget.download(url, 'Data/GoogleNews-vectors.bin.gz')
         return KeyedVectors.load_word2vec_format(
             'Data/GoogleNews-vectors.bin.gz',
             binary=True)
@@ -137,7 +144,6 @@ class tsne:
             'J': wn.ADJ
         }.get(tag[0], wn.NOUN)
         return WordNetLemmatizer().lemmatize(token, tag)
-
 
     def get_preprocessed_corpus(self, X_corpus):
         """
@@ -169,7 +175,6 @@ class tsne:
         doc = ' '.join(lemmatized_tokens)
         return doc
 
-
     def prepare_embedding(self, X):
         """
         Returns the embedding weights matrix, the word index, and the word-vector dictionnary corresponding
@@ -185,20 +190,22 @@ class tsne:
         X_pad = tokenizer.texts_to_sequences(pd.Series(X_pad))
 
         # Pad the sequences
-        X_pad = pad_sequences(X_pad, maxlen=self.max_sentence_len, padding='post', truncating='post')
+        X_pad = pad_sequences(
+            X_pad, maxlen=self.max_sentence_len, padding='post', truncating='post')
 
         # Retrieve the word index
         train_word_index = tokenizer.word_index
 
         # Construct the embedding weights matrix and word-vector dictionnary
-        train_embedding_weights = np.zeros((len(train_word_index) + 1, self.embed_dim))
+        train_embedding_weights = np.zeros(
+            (len(train_word_index) + 1, self.embed_dim))
         for word, index in train_word_index.items():
-            train_embedding_weights[index, :] = word2vec[word] if word in word2vec else np.random.rand(self.embed_dim)
+            train_embedding_weights[index, :] = word2vec[word] if word in word2vec else np.random.rand(
+                self.embed_dim)
         word_vector_dict = dict(zip(pd.Series(list(train_word_index.keys())),
                                     pd.Series(list(train_word_index.keys())).apply(
                                         lambda x: train_embedding_weights[train_word_index[x]])))
         return train_embedding_weights, train_word_index, word_vector_dict
-
 
     def plot(self):
         labels = []
@@ -208,12 +215,13 @@ class tsne:
         u_bound = len(self.words)
         step = int(len(self.words)/self.n_elements)
 
-        #for index in range(l_bound,u_bound, step):
-        for index in random.sample(range(l_bound,u_bound), self.n_elements):
+        # for index in range(l_bound,u_bound, step):
+        for index in random.sample(range(l_bound, u_bound), self.n_elements):
             tokens.append(self.vectors[index])
             labels.append(self.words[index])
 
-        tsne_model = TSNE(perplexity=40, n_components=2, init='pca', n_iter=2500, random_state=23)
+        tsne_model = TSNE(perplexity=40, n_components=2,
+                          init='pca', n_iter=2500, random_state=23)
         new_values = tsne_model.fit_transform(tokens)
 
         xx = []
@@ -224,7 +232,7 @@ class tsne:
 
         plt.figure(figsize=(16, 16))
         for i in range(len(xx)):
-            plt.scatter(xx[i],yy[i])
+            plt.scatter(xx[i], yy[i])
             plt.annotate(labels[i],
                          xy=(xx[i], yy[i]),
                          xytext=(5, 2),
@@ -239,13 +247,14 @@ class NLTKPreprocessor(BaseEstimator, TransformerMixin):
     Transforms input data by using NLTK tokenization, POS tagging, lemmatization and vectorization.
     """
 
-    def __init__(self, corpus, max_sentence_len = 300, stopwords=None, punct=None, lower=True, strip=True):
+    def __init__(self, corpus, max_sentence_len=300, stopwords=None, punct=None, lower=True, strip=True):
         """
         Instantiates the preprocessor.
         """
         self.lower = lower
         self.strip = strip
-        self.stopwords = set(stopwords) if stopwords else set(sw.words('english'))
+        self.stopwords = set(stopwords) if stopwords else set(
+            sw.words('english'))
         self.punct = set(punct) if punct else set(string.punctuation)
         self.lemmatizer = WordNetLemmatizer()
         self.corpus = corpus
@@ -316,7 +325,6 @@ class NLTKPreprocessor(BaseEstimator, TransformerMixin):
         tokenized_document = self.vectorize(np.array(doc)[np.newaxis])
         return tokenized_document
 
-
     def vectorize(self, doc):
         """
         Returns a vectorized padded version of sequences.
@@ -325,7 +333,8 @@ class NLTKPreprocessor(BaseEstimator, TransformerMixin):
         with open(save_path, 'rb') as f:
             tokenizer = pickle.load(f)
         doc_pad = tokenizer.texts_to_sequences(doc)
-        doc_pad = pad_sequences(doc_pad, padding='pre', truncating='pre', maxlen=self.max_sentence_len)
+        doc_pad = pad_sequences(doc_pad, padding='pre',
+                                truncating='pre', maxlen=self.max_sentence_len)
         return np.squeeze(doc_pad)
 
     def lemmatize(self, token, tag):
